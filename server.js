@@ -11,6 +11,9 @@ import { WebSocketServer } from 'ws';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const PORT = process.env.PORT || 3000;
+// Bind to 127.0.0.1 when running behind a reverse proxy (nginx); default to
+// all interfaces for local/LAN play. Override with HOST=127.0.0.1 in prod.
+const HOST = process.env.HOST || '0.0.0.0';
 
 // ---------------------------------------------------------------------------
 // Bingo primitives
@@ -386,6 +389,6 @@ setInterval(() => {
   }
 }, 60000);
 
-server.listen(PORT, () => {
-  console.log(`Cruise Bingo running on http://localhost:${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(`Cruise Bingo running on http://${HOST}:${PORT}`);
 });

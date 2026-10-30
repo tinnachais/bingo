@@ -1,0 +1,28 @@
+# systemd unit for Cruise Bingo.
+# Install:  sudo cp deploy/cruise-bingo.service /etc/systemd/system/
+#           sudo systemctl daemon-reload && sudo systemctl enable --now cruise-bingo
+# Adjust WorkingDirectory / User / node path to match your server.
+[Unit]
+Description=Cruise Bingo WebSocket server
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/cruise-bingo
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOST=127.0.0.1
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=3
+User=www-data
+Group=www-data
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/cruise-bingo
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
