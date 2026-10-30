@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+  <meta name="theme-color" content="#0a2540" />
+  <title>Cruise Bingo</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚓</text></svg>" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand">
+      <div class="bingo-letters"><span>B</span><span>I</span><span>N</span><span>G</span><span>O</span></div>
+      <h1>⚓ Cruise Bingo</h1>
+      <p>บิงโก 75 ลูก เล่นสดพร้อมกันบนมือถือ</p>
+    </div>
+
+    <div class="card">
+      <h2>🙋 เข้าร่วมเกม (ผู้เล่น)</h2>
+      <label for="name">ชื่อของคุณ</label>
+      <input id="name" placeholder="เช่น ตั้ม" maxlength="20" autocomplete="off" />
+      <label for="code">รหัสห้อง</label>
+      <input id="code" class="code" placeholder="ABCD" maxlength="4" autocomplete="off" autocapitalize="characters" />
+      <label for="cards">จำนวนการ์ด</label>
+      <select id="cards">
+        <option value="1">1 ใบ</option>
+        <option value="2">2 ใบ</option>
+        <option value="3">3 ใบ</option>
+        <option value="4">4 ใบ</option>
+        <option value="5">5 ใบ</option>
+        <option value="6">6 ใบ</option>
+      </select>
+      <p class="note" style="margin:6px 0 0;text-align:left">* เจ้ามือกำหนดจำนวนการ์ดสูงสุดได้ ระบบจะปรับให้อัตโนมัติถ้าเกิน</p>
+      <button class="btn" id="joinBtn">เข้าเล่น</button>
+    </div>
+
+    <div class="card">
+      <h2>🎤 เปิดห้องใหม่ (ผู้ดำเนินเกม)</h2>
+      <p class="note" style="margin-top:0">สำหรับคนสุ่มเลข/เรียกเลข — เปิดจอนี้ไว้ แล้วให้ผู้เล่นสแกนรหัสห้องเข้ามา</p>
+      <button class="btn secondary" id="hostBtn">สร้างห้อง + เป็นเจ้ามือ</button>
+    </div>
+
+    <p class="note">เล่นได้เลยในเบราว์เซอร์ ไม่ต้องติดตั้งแอป · ทุกคนต้องเชื่อมต่อผ่านเซิร์ฟเวอร์เดียวกัน</p>
+  </div>
+
+  <script type="module">
+    import { store, toast } from '/js/common.js';
+    const $ = (s) => document.querySelector(s);
+    // Prefill last name used
+    const last = store.get('cb_name'); if (last) $('#name').value = last;
+    $('#code').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); });
+
+    $('#joinBtn').onclick = () => {
+      const name = $('#name').value.trim();
+      const code = $('#code').value.trim().toUpperCase();
+      const cards = $('#cards').value;
+      if (!name) return toast('ใส่ชื่อก่อนนะ');
+      if (code.length !== 4) return toast('รหัสห้องมี 4 ตัว');
+      store.set('cb_name', name);
+      location.href = `/player.html?code=${encodeURIComponent(code)}&name=${encodeURIComponent(name)}&cards=${cards}`;
+    };
+    $('#hostBtn').onclick = () => { location.href = '/host.html'; };
+  </script>
+</body>
+</html>

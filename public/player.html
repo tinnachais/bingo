@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+  <meta name="theme-color" content="#0a2540" />
+  <title>Cruise Bingo — ผู้เล่น</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚓</text></svg>" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="conn-badge" id="conn"><span class="dot"></span><span id="connText">กำลังเชื่อม…</span></div>
+  <div class="wrap">
+    <div class="brand" style="padding:14px 0 2px">
+      <h1 style="font-size:1.4rem">⚓ Cruise Bingo</h1>
+    </div>
+
+    <div class="card" style="margin-top:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <div>
+          <div style="font-size:0.8rem;color:var(--muted)">ห้อง <b id="roomCode" style="color:var(--gold);letter-spacing:3px">----</b></div>
+          <div id="playerName" style="font-weight:800"></div>
+        </div>
+        <div style="text-align:right">
+          <div class="pill" id="patternPill">รูปแบบ: —</div>
+        </div>
+      </div>
+      <div class="caller-stage" style="padding:6px 0 0">
+        <div class="meta-row">
+          <span>เรียกแล้ว <b id="calledCount">0</b></span>
+          <span>เลขล่าสุด: <b id="lastCall" style="color:var(--gold)">—</b></span>
+        </div>
+      </div>
+    </div>
+
+    <div id="statusBanner"></div>
+
+    <button class="btn big-bingo" id="bingoBtn" disabled>BINGO! 🎉</button>
+    <p class="note" id="hint">รอเจ้ามือเริ่มเกม… การ์ดที่ตรงเลขเยอะสุดจะเลื่อนขึ้นบนให้อัตโนมัติ</p>
+
+    <div id="cards"></div>
+
+    <p class="note"><a class="plain" href="/">← ออกจากเกม</a></p>
+  </div>
+
+  <script type="module" src="/js/player.js"></script>
+</body>
+</html>

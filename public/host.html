@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+  <meta name="theme-color" content="#0a2540" />
+  <title>Cruise Bingo — เจ้ามือ</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚓</text></svg>" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="conn-badge" id="conn"><span class="dot"></span><span id="connText">กำลังเชื่อม…</span></div>
+  <div class="wrap">
+    <div class="brand" style="padding:14px 0 2px">
+      <h1 style="font-size:1.4rem">🎤 Cruise Bingo — เจ้ามือ</h1>
+    </div>
+
+    <div class="card">
+      <div class="roomcode">
+        <div class="label">รหัสห้อง</div>
+        <div class="value" id="roomCode">····</div>
+      </div>
+      <p class="note" style="margin-top:4px">ให้ผู้เล่นเปิด <b id="joinUrl">—</b> แล้วกรอกรหัสนี้</p>
+    </div>
+
+    <!-- Lobby controls -->
+    <div class="card" id="lobbyCard">
+      <h2>ตั้งค่าเกม</h2>
+      <label for="pattern">รูปแบบการชนะ</label>
+      <select id="pattern">
+        <option value="line">แถวใดก็ได้ (แนวนอน/ตั้ง/ทแยง)</option>
+        <option value="four_corners">สี่มุม</option>
+        <option value="x">ตัว X (ทแยงสองเส้น)</option>
+        <option value="blackout">เต็มใบ (Blackout)</option>
+      </select>
+      <label for="maxCards">จำนวนการ์ดต่อเครื่อง (สูงสุด)</label>
+      <select id="maxCards">
+        <option value="1">1 ใบ</option>
+        <option value="2">2 ใบ</option>
+        <option value="3">3 ใบ</option>
+        <option value="4" selected>4 ใบ</option>
+        <option value="6">6 ใบ</option>
+      </select>
+      <button class="btn" id="startBtn">▶️ เริ่มเกม</button>
+    </div>
+
+    <!-- Caller stage -->
+    <div class="card hidden" id="callerCard">
+      <div class="caller-stage">
+        <div class="ball empty" id="ball"><span class="num">—</span></div>
+        <div class="meta-row">
+          <span>เรียกแล้ว <b id="calledCount">0</b>/75</span>
+          <span>เหลือ <b id="remaining">75</b></span>
+          <span>รูปแบบ: <b id="patternLabel">—</b></span>
+        </div>
+      </div>
+      <button class="btn" id="drawBtn">🎱 เรียกเลขถัดไป</button>
+      <div class="row">
+        <button class="btn ghost" id="autoBtn">⏱️ เรียกอัตโนมัติ: ปิด</button>
+        <button class="btn danger" id="resetBtn">↺ รอบใหม่</button>
+      </div>
+    </div>
+
+    <div id="winBanner"></div>
+
+    <!-- Called board -->
+    <div class="card hidden" id="boardCard">
+      <h2>เลขที่เรียกแล้ว</h2>
+      <div class="board" id="board"></div>
+    </div>
+
+    <!-- Players -->
+    <div class="card">
+      <h2>ผู้เล่น (<span id="playerCount">0</span>)</h2>
+      <div class="players" id="players"><span class="note">ยังไม่มีผู้เล่นเข้าห้อง</span></div>
+    </div>
+
+    <p class="note"><a class="plain" href="/">← กลับหน้าแรก</a></p>
+  </div>
+
+  <script type="module" src="/js/host.js"></script>
+</body>
+</html>
