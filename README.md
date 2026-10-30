@@ -30,6 +30,12 @@ npm start
 PORT=8080 npm start
 ```
 
+## Deploy ขึ้นออนไลน์
+
+- **Windows Server** (เช่น bingo.pssgroup.app) → ดู [`deploy/windows/DEPLOY-WINDOWS.md`](deploy/windows/DEPLOY-WINDOWS.md)
+  — รัน Node เป็น service ด้วย NSSM + Caddy (HTTPS อัตโนมัติ)
+- **Linux + nginx** → ดู [`deploy/DEPLOY.md`](deploy/DEPLOY.md) — systemd + nginx + Let's Encrypt
+
 ## วิธีเล่น
 
 1. **เจ้ามือ** เปิดหน้าแรก → กด "สร้างห้อง + เป็นเจ้ามือ" จะได้รหัสห้อง 4 ตัว

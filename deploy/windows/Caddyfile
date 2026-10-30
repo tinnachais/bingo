@@ -1,0 +1,11 @@
+# Caddy reverse proxy for bingo.pssgroup.app (Windows)
+# วางไฟล์นี้ไว้ที่  C:\tools\caddy\Caddyfile
+#
+# Caddy จะขอใบรับรอง TLS (Let's Encrypt) ให้อัตโนมัติ และส่งผ่าน WebSocket
+# ที่ /ws ให้เองโดยไม่ต้องตั้งค่าอะไรเพิ่ม — ขอแค่ DNS ของโดเมนชี้มาที่เครื่องนี้
+# และเปิดพอร์ต 80, 443 ที่ไฟร์วอลล์
+
+bingo.pssgroup.app {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:3000
+}
