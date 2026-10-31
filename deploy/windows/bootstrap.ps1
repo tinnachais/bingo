@@ -1,6 +1,8 @@
 <#
   Cruise Bingo - all-in-one installer for Windows Server.
-  Installs: Node + NSSM + Caddy + app code + services + firewall + automatic HTTPS.
+  Installs: Node + Caddy + app code, runs both as Scheduled Tasks (SYSTEM,
+  at startup, auto-restart), opens the firewall, and gets automatic HTTPS.
+  No NSSM needed - uses the built-in Task Scheduler.
 
   Usage (open PowerShell as Administrator, paste one line):
 
@@ -9,7 +11,7 @@
     iwr https://raw.githubusercontent.com/tinnachais/bingo/<SHA>/deploy/windows/bootstrap.ps1 -OutFile $env:TEMP\bootstrap.ps1; `
     & $env:TEMP\bootstrap.ps1
 
-  Safe to re-run (idempotent): existing services are removed and recreated.
+  Safe to re-run (idempotent): existing tasks are removed and recreated.
 #>
 
 param(
@@ -32,7 +34,6 @@ $admin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 if (-not $admin) { throw "Please run PowerShell as Administrator" }
 
 $NodeDir  = Join-Path $ToolsDir "node"
-$NssmExe  = Join-Path $ToolsDir "nssm\nssm.exe"
 $CaddyDir = Join-Path $ToolsDir "caddy"
 $CaddyExe = Join-Path $CaddyDir "caddy.exe"
 New-Item -ItemType Directory -Force -Path $ToolsDir, (Split-Path $AppDir) | Out-Null
@@ -45,6 +46,7 @@ try {
   Write-Host "   This machine public IP: $myip"
   Write-Host "   $Domain resolves to    : $dns"
   if ($dns -ne $myip) { Warn "DNS does not point to this machine yet - Caddy cannot get an HTTPS certificate until the A record for $Domain points to $myip" }
+  else { Write-Host "   DNS OK" -ForegroundColor Green }
 } catch { Warn "DNS check failed: $($_.Exception.Message) - verify $Domain points to this machine" }
 
 # --- 2. Node.js (portable zip) ---
@@ -63,19 +65,7 @@ $NodeExe = Join-Path $NodeDir "node.exe"
 $NpmCmd  = Join-Path $NodeDir "npm.cmd"
 Write-Host "   node: $(& $NodeExe -v)"
 
-# --- 3. NSSM ---
-if (Test-Path $NssmExe) {
-  Say "NSSM already present"
-} else {
-  Say "Downloading NSSM"
-  $zz = "$env:TEMP\nssm.zip"
-  Invoke-WebRequest "https://nssm.cc/release/nssm-2.24.zip" -OutFile $zz
-  Expand-Archive $zz -DestinationPath "$env:TEMP\nssm_x" -Force
-  New-Item -ItemType Directory -Force -Path (Split-Path $NssmExe) | Out-Null
-  Copy-Item "$env:TEMP\nssm_x\nssm-2.24\win64\nssm.exe" $NssmExe -Force
-}
-
-# --- 4. Caddy ---
+# --- 3. Caddy (from GitHub releases) ---
 if (Test-Path $CaddyExe) {
   Say "Caddy already present"
 } else {
@@ -87,7 +77,7 @@ if (Test-Path $CaddyExe) {
   Copy-Item "$env:TEMP\caddy_x\caddy.exe" $CaddyExe -Force
 }
 
-# --- 5. Fetch app code ---
+# --- 4. Fetch app code ---
 Say "Fetching app code (branch $Branch)"
 $az = "$env:TEMP\bingo.zip"
 $branchFile = $Branch.Replace('/','-')
@@ -96,15 +86,15 @@ Expand-Archive $az -DestinationPath "$env:TEMP\bingo_x" -Force
 $srcApp = Join-Path "$env:TEMP\bingo_x" "bingo-$branchFile"
 if (Test-Path $AppDir) { Remove-Item $AppDir -Recurse -Force }
 Move-Item $srcApp $AppDir
+New-Item -ItemType Directory -Force -Path (Join-Path $AppDir "logs") | Out-Null
 
-# --- 6. npm ci ---
+# --- 5. npm ci ---
 Say "Installing dependencies (npm ci)"
 Push-Location $AppDir
 & $NpmCmd ci --omit=dev
 Pop-Location
-New-Item -ItemType Directory -Force -Path (Join-Path $AppDir "logs") | Out-Null
 
-# --- 7. Write Caddyfile ---
+# --- 6. Write Caddyfile ---
 Say "Writing Caddyfile for $Domain"
 @"
 $Domain {
@@ -113,24 +103,38 @@ $Domain {
 }
 "@ | Set-Content -Path (Join-Path $CaddyDir "Caddyfile") -Encoding UTF8
 
-# --- 8. Services (remove old first) ---
-Say "Registering Windows services"
-foreach ($svc in "CruiseBingo","CruiseBingoCaddy") {
-  if (Get-Service $svc -ErrorAction SilentlyContinue) { & $NssmExe stop $svc | Out-Null; & $NssmExe remove $svc confirm | Out-Null }
+# --- 7. Write launcher .cmd wrappers (set env, cwd, logging) ---
+Say "Writing launchers"
+$bingoCmd = Join-Path $AppDir "run-bingo.cmd"
+@"
+@echo off
+cd /d "$AppDir"
+set PORT=$Port
+set HOST=127.0.0.1
+set NODE_ENV=production
+"$NodeExe" server.js >> "$AppDir\logs\app.out.log" 2>>&1
+"@ | Set-Content -Path $bingoCmd -Encoding ASCII
+
+$caddyCmd = Join-Path $CaddyDir "run-caddy.cmd"
+@"
+@echo off
+cd /d "$CaddyDir"
+"$CaddyExe" run --config "$CaddyDir\Caddyfile" --adapter caddyfile >> "$CaddyDir\caddy.out.log" 2>>&1
+"@ | Set-Content -Path $caddyCmd -Encoding ASCII
+
+# --- 8. Register Scheduled Tasks (SYSTEM, at startup, auto-restart) ---
+Say "Registering startup tasks"
+function Register-BingoTask($name, $cmd, $workdir) {
+  Unregister-ScheduledTask -TaskName $name -Confirm:$false -ErrorAction SilentlyContinue
+  $action    = New-ScheduledTaskAction -Execute $cmd -WorkingDirectory $workdir
+  $trigger   = New-ScheduledTaskTrigger -AtStartup
+  $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+  $settings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RestartCount 5 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew
+  Register-ScheduledTask -TaskName $name -Action $action -Trigger $trigger -Principal $principal -Settings $settings | Out-Null
+  Start-ScheduledTask -TaskName $name
 }
-
-& $NssmExe install CruiseBingo $NodeExe "server.js" | Out-Null
-& $NssmExe set CruiseBingo AppDirectory $AppDir | Out-Null
-& $NssmExe set CruiseBingo AppEnvironmentExtra "PORT=$Port" "HOST=127.0.0.1" "NODE_ENV=production" | Out-Null
-& $NssmExe set CruiseBingo Start SERVICE_AUTO_START | Out-Null
-& $NssmExe set CruiseBingo AppStdout "$AppDir\logs\app.out.log" | Out-Null
-& $NssmExe set CruiseBingo AppStderr "$AppDir\logs\app.err.log" | Out-Null
-
-& $NssmExe install CruiseBingoCaddy $CaddyExe "run --config `"$CaddyDir\Caddyfile`" --adapter caddyfile" | Out-Null
-& $NssmExe set CruiseBingoCaddy AppDirectory $CaddyDir | Out-Null
-& $NssmExe set CruiseBingoCaddy Start SERVICE_AUTO_START | Out-Null
-& $NssmExe set CruiseBingoCaddy AppStdout "$CaddyDir\caddy.out.log" | Out-Null
-& $NssmExe set CruiseBingoCaddy AppStderr "$CaddyDir\caddy.err.log" | Out-Null
+Register-BingoTask "CruiseBingo"      $bingoCmd $AppDir
+Register-BingoTask "CruiseBingoCaddy" $caddyCmd $CaddyDir
 
 # --- 9. Firewall ---
 Say "Opening firewall ports 80/443"
@@ -140,20 +144,22 @@ foreach ($p in 80,443) {
   }
 }
 
-# --- 10. Start ---
-Say "Starting services"
-& $NssmExe start CruiseBingo | Out-Null
-Start-Sleep -Seconds 2
-& $NssmExe start CruiseBingoCaddy | Out-Null
-Start-Sleep -Seconds 3
+# --- 10. Verify ---
+Start-Sleep -Seconds 4
+Say "Verifying"
+$listening = $false
+try { $listening = (Test-NetConnection -ComputerName 127.0.0.1 -Port $Port -WarningAction SilentlyContinue).TcpTestSucceeded } catch {}
+if ($listening) { Write-Host "   Node app is listening on 127.0.0.1:$Port" -ForegroundColor Green }
+else { Warn "Node app not listening yet on port $Port - check $AppDir\logs\app.out.log" }
 
 Write-Host "`n======================================================" -ForegroundColor Green
 Write-Host " DONE!" -ForegroundColor Green
 Write-Host " Open:  https://$Domain" -ForegroundColor Green
 Write-Host "======================================================`n" -ForegroundColor Green
-Write-Host "Service status:"
-Get-Service CruiseBingo, CruiseBingoCaddy | Format-Table -AutoSize
+Write-Host "Task status:"
+Get-ScheduledTask CruiseBingo, CruiseBingoCaddy | Select-Object TaskName, State | Format-Table -AutoSize
 Write-Host "If the site is not up yet, wait 10-60s for Caddy to get a certificate, then retry. Logs:"
-Write-Host "  Get-Content $AppDir\logs\app.err.log -Tail 40"
-Write-Host "  Get-Content $CaddyDir\caddy.err.log -Tail 40"
-Write-Host "`nNote: if hostatom has an external firewall, also open inbound 80/443 in its control panel."
+Write-Host "  Get-Content $AppDir\logs\app.out.log -Tail 40"
+Write-Host "  Get-Content $CaddyDir\caddy.out.log -Tail 40"
+Write-Host "`nManage:  Start-ScheduledTask CruiseBingo | Stop-ScheduledTask CruiseBingo"
+Write-Host "Note: if hostatom has an external firewall, also open inbound 80/443 in its control panel."
