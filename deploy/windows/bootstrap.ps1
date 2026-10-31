@@ -1,15 +1,15 @@
 <#
-  Cruise Bingo — all-in-one installer for Windows Server.
-  ติดตั้งครบจบ: Node + NSSM + Caddy + โค้ด + service + ไฟร์วอลล์ + HTTPS อัตโนมัติ
+  Cruise Bingo - all-in-one installer for Windows Server.
+  Installs: Node + NSSM + Caddy + app code + services + firewall + automatic HTTPS.
 
-  วิธีใช้ (เปิด PowerShell แบบ Run as Administrator แล้ว paste บรรทัดเดียว):
+  Usage (open PowerShell as Administrator, paste one line):
 
     Set-ExecutionPolicy Bypass -Scope Process -Force; `
     [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; `
-    iwr https://raw.githubusercontent.com/tinnachais/bingo/claude/peaceful-gauss-0b70su/deploy/windows/bootstrap.ps1 -OutFile $env:TEMP\bootstrap.ps1; `
+    iwr https://raw.githubusercontent.com/tinnachais/bingo/<SHA>/deploy/windows/bootstrap.ps1 -OutFile $env:TEMP\bootstrap.ps1; `
     & $env:TEMP\bootstrap.ps1
 
-  รันซ้ำได้ (idempotent) — ถ้ามี service อยู่แล้วจะลบแล้วตั้งใหม่
+  Safe to re-run (idempotent): existing services are removed and recreated.
 #>
 
 param(
@@ -27,9 +27,9 @@ $ErrorActionPreference = "Stop"
 function Say($m){ Write-Host "`n==> $m" -ForegroundColor Cyan }
 function Warn($m){ Write-Host "!! $m" -ForegroundColor Yellow }
 
-# --- 0. ต้องเป็น Administrator ---
+# --- 0. must be Administrator ---
 $admin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-if (-not $admin) { throw "ต้องเปิด PowerShell แบบ Run as Administrator" }
+if (-not $admin) { throw "Please run PowerShell as Administrator" }
 
 $NodeDir  = Join-Path $ToolsDir "node"
 $NssmExe  = Join-Path $ToolsDir "nssm\nssm.exe"
@@ -37,21 +37,21 @@ $CaddyDir = Join-Path $ToolsDir "caddy"
 $CaddyExe = Join-Path $CaddyDir "caddy.exe"
 New-Item -ItemType Directory -Force -Path $ToolsDir, (Split-Path $AppDir) | Out-Null
 
-# --- 1. ตรวจ DNS (เตือนถ้ายังไม่ชี้มาเครื่องนี้) ---
-Say "ตรวจ DNS ของ $Domain"
+# --- 1. DNS check (warn if not pointing here yet) ---
+Say "Checking DNS for $Domain"
 try {
   $myip = (Invoke-RestMethod "https://api.ipify.org?format=text")
   $dns  = (Resolve-DnsName $Domain -Type A -ErrorAction Stop | Where-Object {$_.IPAddress} | Select-Object -First 1).IPAddress
-  Write-Host "   IP เครื่องนี้ (public): $myip"
-  Write-Host "   $Domain ชี้ไปที่      : $dns"
-  if ($dns -ne $myip) { Warn "DNS ยังไม่ชี้มาที่เครื่องนี้ — Caddy จะขอใบรับรอง HTTPS ไม่ได้จนกว่าจะชี้ถูก (ตั้ง A record $Domain -> $myip)" }
-} catch { Warn "ตรวจ DNS ไม่ได้: $($_.Exception.Message) — ตรวจเองว่า $Domain ชี้มาที่เครื่องนี้" }
+  Write-Host "   This machine public IP: $myip"
+  Write-Host "   $Domain resolves to    : $dns"
+  if ($dns -ne $myip) { Warn "DNS does not point to this machine yet - Caddy cannot get an HTTPS certificate until the A record for $Domain points to $myip" }
+} catch { Warn "DNS check failed: $($_.Exception.Message) - verify $Domain points to this machine" }
 
 # --- 2. Node.js (portable zip) ---
 if (Test-Path (Join-Path $NodeDir "node.exe")) {
-  Say "มี Node อยู่แล้วที่ $NodeDir"
+  Say "Node already present at $NodeDir"
 } else {
-  Say "ดาวน์โหลด Node.js v$NodeVer"
+  Say "Downloading Node.js v$NodeVer"
   $nz = "$env:TEMP\node.zip"
   Invoke-WebRequest "https://nodejs.org/dist/v$NodeVer/node-v$NodeVer-win-x64.zip" -OutFile $nz
   Expand-Archive $nz -DestinationPath "$env:TEMP\node_x" -Force
@@ -65,9 +65,9 @@ Write-Host "   node: $(& $NodeExe -v)"
 
 # --- 3. NSSM ---
 if (Test-Path $NssmExe) {
-  Say "มี NSSM อยู่แล้ว"
+  Say "NSSM already present"
 } else {
-  Say "ดาวน์โหลด NSSM"
+  Say "Downloading NSSM"
   $zz = "$env:TEMP\nssm.zip"
   Invoke-WebRequest "https://nssm.cc/release/nssm-2.24.zip" -OutFile $zz
   Expand-Archive $zz -DestinationPath "$env:TEMP\nssm_x" -Force
@@ -77,9 +77,9 @@ if (Test-Path $NssmExe) {
 
 # --- 4. Caddy ---
 if (Test-Path $CaddyExe) {
-  Say "มี Caddy อยู่แล้ว"
+  Say "Caddy already present"
 } else {
-  Say "ดาวน์โหลด Caddy v$CaddyVer"
+  Say "Downloading Caddy v$CaddyVer"
   $cz = "$env:TEMP\caddy.zip"
   Invoke-WebRequest "https://github.com/caddyserver/caddy/releases/download/v$CaddyVer/caddy_${CaddyVer}_windows_amd64.zip" -OutFile $cz
   Expand-Archive $cz -DestinationPath "$env:TEMP\caddy_x" -Force
@@ -87,8 +87,8 @@ if (Test-Path $CaddyExe) {
   Copy-Item "$env:TEMP\caddy_x\caddy.exe" $CaddyExe -Force
 }
 
-# --- 5. ดึงโค้ดแอป ---
-Say "ดึงโค้ดแอป (branch $Branch)"
+# --- 5. Fetch app code ---
+Say "Fetching app code (branch $Branch)"
 $az = "$env:TEMP\bingo.zip"
 $branchFile = $Branch.Replace('/','-')
 Invoke-WebRequest "https://github.com/tinnachais/bingo/archive/refs/heads/$Branch.zip" -OutFile $az
@@ -98,14 +98,14 @@ if (Test-Path $AppDir) { Remove-Item $AppDir -Recurse -Force }
 Move-Item $srcApp $AppDir
 
 # --- 6. npm ci ---
-Say "ติดตั้ง dependency (npm ci)"
+Say "Installing dependencies (npm ci)"
 Push-Location $AppDir
 & $NpmCmd ci --omit=dev
 Pop-Location
 New-Item -ItemType Directory -Force -Path (Join-Path $AppDir "logs") | Out-Null
 
-# --- 7. เขียน Caddyfile ---
-Say "เขียน Caddyfile สำหรับ $Domain"
+# --- 7. Write Caddyfile ---
+Say "Writing Caddyfile for $Domain"
 @"
 $Domain {
 	encode zstd gzip
@@ -113,8 +113,8 @@ $Domain {
 }
 "@ | Set-Content -Path (Join-Path $CaddyDir "Caddyfile") -Encoding UTF8
 
-# --- 8. ตั้ง service (ลบของเก่าถ้ามี) ---
-Say "ตั้ง Windows service"
+# --- 8. Services (remove old first) ---
+Say "Registering Windows services"
 foreach ($svc in "CruiseBingo","CruiseBingoCaddy") {
   if (Get-Service $svc -ErrorAction SilentlyContinue) { & $NssmExe stop $svc | Out-Null; & $NssmExe remove $svc confirm | Out-Null }
 }
@@ -132,28 +132,28 @@ foreach ($svc in "CruiseBingo","CruiseBingoCaddy") {
 & $NssmExe set CruiseBingoCaddy AppStdout "$CaddyDir\caddy.out.log" | Out-Null
 & $NssmExe set CruiseBingoCaddy AppStderr "$CaddyDir\caddy.err.log" | Out-Null
 
-# --- 9. ไฟร์วอลล์ ---
-Say "เปิดไฟร์วอลล์ 80/443"
+# --- 9. Firewall ---
+Say "Opening firewall ports 80/443"
 foreach ($p in 80,443) {
   if (-not (Get-NetFirewallRule -DisplayName "Cruise Bingo $p" -ErrorAction SilentlyContinue)) {
     New-NetFirewallRule -DisplayName "Cruise Bingo $p" -Direction Inbound -Action Allow -Protocol TCP -LocalPort $p | Out-Null
   }
 }
 
-# --- 10. start ---
-Say "เริ่ม service"
+# --- 10. Start ---
+Say "Starting services"
 & $NssmExe start CruiseBingo | Out-Null
 Start-Sleep -Seconds 2
 & $NssmExe start CruiseBingoCaddy | Out-Null
 Start-Sleep -Seconds 3
 
 Write-Host "`n======================================================" -ForegroundColor Green
-Write-Host " เสร็จแล้ว!" -ForegroundColor Green
-Write-Host " เปิด:  https://$Domain" -ForegroundColor Green
+Write-Host " DONE!" -ForegroundColor Green
+Write-Host " Open:  https://$Domain" -ForegroundColor Green
 Write-Host "======================================================`n" -ForegroundColor Green
-Write-Host "สถานะ service:"
+Write-Host "Service status:"
 Get-Service CruiseBingo, CruiseBingoCaddy | Format-Table -AutoSize
-Write-Host "ถ้าเว็บยังไม่ขึ้น รอ Caddy ขอใบรับรอง 10-60 วิ แล้วลองใหม่ หรือดู log:"
+Write-Host "If the site is not up yet, wait 10-60s for Caddy to get a certificate, then retry. Logs:"
 Write-Host "  Get-Content $AppDir\logs\app.err.log -Tail 40"
 Write-Host "  Get-Content $CaddyDir\caddy.err.log -Tail 40"
-Write-Host "`nหมายเหตุ: ถ้า hostatom มีไฟร์วอลล์ภายนอก ต้องเปิด inbound 80/443 ที่ control panel ด้วย"
+Write-Host "`nNote: if hostatom has an external firewall, also open inbound 80/443 in its control panel."
