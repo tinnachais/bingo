@@ -1,0 +1,14 @@
+# Render Blueprint — deploy Cruise Bingo as a Node web service.
+# ใช้ผ่านเบราว์เซอร์มือถือได้: เชื่อม GitHub repo นี้แล้ว Render จะรันให้อัตโนมัติ
+# รองรับ WebSocket, อ่าน PORT จาก env ให้เอง (server.js bind 0.0.0.0 อยู่แล้ว)
+services:
+  - type: web
+    name: cruise-bingo
+    runtime: node
+    plan: free
+    buildCommand: npm ci --omit=dev
+    startCommand: node server.js
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
