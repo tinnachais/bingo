@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Cruise Bingo — Flow Journey</title>
+<style>
+  :root{
+    --navy:#0a2540;--deep:#061a2e;--gold:#f6c650;--gold2:#e0a92e;
+    --aqua:#37c4d6;--aqua2:#1ea7bb;--coral:#ff6b6b;--green:#35c27a;
+    --muted:#8aa2b8;--line:rgba(255,255,255,.14);--ink:#eaf2fb;
+    --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Thai",sans-serif;
+    color:var(--ink);line-height:1.5;
+    background:radial-gradient(1200px 600px at 50% -10%,#12507e 0,transparent 60%),linear-gradient(180deg,var(--navy),var(--deep));
+    background-attachment:fixed;min-height:100vh;
+  }
+  .wrap{max-width:1020px;margin:0 auto;padding:24px 16px 60px}
+  header{text-align:center;padding:14px 0 6px}
+  .letters{display:inline-flex;gap:6px;margin-bottom:10px}
+  .letters span{background:linear-gradient(180deg,var(--gold),var(--gold2));color:var(--navy);
+    width:2em;height:2em;display:grid;place-items:center;border-radius:10px;font-weight:900;box-shadow:var(--shadow)}
+  h1{margin:4px 0;font-size:1.8rem}
+  header p{color:var(--muted);margin:4px 0 0}
+
+  .legend{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin:18px 0 6px;font-size:.85rem;color:var(--muted)}
+  .legend b{display:inline-flex;align-items:center;gap:6px;font-weight:600;color:var(--ink)}
+  .chip{width:12px;height:12px;border-radius:4px;display:inline-block}
+  .chip.host{background:linear-gradient(180deg,var(--gold),var(--gold2))}
+  .chip.player{background:linear-gradient(180deg,var(--aqua),var(--aqua2))}
+  .chip.server{background:linear-gradient(180deg,#b388ff,#8a5cf6)}
+
+  .lanes{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:10px}
+  @media(max-width:720px){.lanes{grid-template-columns:1fr}}
+
+  .lane{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:var(--shadow)}
+  .lane h2{margin:2px 0 14px;font-size:1.15rem;display:flex;align-items:center;gap:10px}
+  .lane .tag{font-size:.72rem;font-weight:700;padding:4px 10px;border-radius:999px}
+  .host .tag{background:rgba(246,198,80,.18);color:var(--gold)}
+  .player .tag{background:rgba(55,196,214,.18);color:var(--aqua)}
+
+  .step{position:relative;padding:0 0 18px 46px}
+  .step:last-child{padding-bottom:0}
+  .step::before{content:"";position:absolute;left:15px;top:30px;bottom:-4px;width:2px;background:var(--line)}
+  .step:last-child::before{display:none}
+  .num{position:absolute;left:0;top:0;width:32px;height:32px;border-radius:50%;
+    display:grid;place-items:center;font-weight:800;font-size:.9rem;color:var(--navy);z-index:1}
+  .host .num{background:linear-gradient(180deg,var(--gold),var(--gold2))}
+  .player .num{background:linear-gradient(180deg,var(--aqua),var(--aqua2));color:#042630}
+  .step .t{font-weight:700}
+  .step .d{color:var(--muted);font-size:.88rem;margin-top:2px}
+  .step .d code{background:rgba(255,255,255,.08);padding:1px 6px;border-radius:5px;color:#ffe9a8;font-size:.85em}
+
+  .server{margin:22px 0;background:linear-gradient(180deg,rgba(138,92,246,.18),rgba(138,92,246,.06));
+    border:1px solid rgba(138,92,246,.4);border-radius:18px;padding:18px}
+  .server h2{margin:0 0 6px;font-size:1.1rem;display:flex;align-items:center;gap:10px}
+  .server h2 .ic{width:30px;height:30px;border-radius:9px;background:linear-gradient(180deg,#b388ff,#8a5cf6);display:grid;place-items:center;font-size:1rem}
+  .server .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}
+  @media(max-width:720px){.server .grid{grid-template-columns:1fr}}
+  .server .box{background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .server .box .h{font-weight:700;font-size:.92rem;margin-bottom:3px}
+  .server .box .p{color:var(--muted);font-size:.84rem}
+
+  .win{margin-top:8px;background:linear-gradient(180deg,rgba(53,194,122,.2),rgba(53,194,122,.06));
+    border:1px solid rgba(53,194,122,.4);border-radius:18px;padding:18px;text-align:center}
+  .win h2{margin:0 0 6px;font-size:1.15rem}
+  .win p{margin:4px 0;color:#cfe9da}
+  .win .flow{display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap;margin-top:12px;font-size:.9rem}
+  .win .flow .n{background:rgba(255,255,255,.08);padding:8px 14px;border-radius:999px;font-weight:600}
+  .win .flow .arw{color:var(--green);font-weight:800}
+
+  .note{margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:720px){.note{grid-template-columns:1fr}}
+  .note .n{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:14px;padding:14px}
+  .note .n .h{font-weight:700;display:flex;gap:8px;align-items:center;margin-bottom:4px}
+  .note .n .p{color:var(--muted);font-size:.86rem}
+
+  .foot{text-align:center;color:var(--muted);font-size:.8rem;margin-top:28px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="letters"><span>B</span><span>I</span><span>N</span><span>G</span><span>O</span></div>
+    <h1>⚓ Cruise Bingo — Flow Journey</h1>
+    <p>เส้นทางการใช้งานตั้งแต่เปิดห้องจนประกาศผู้ชนะ</p>
+  </header>
+
+  <div class="legend">
+    <b><span class="chip host"></span> เจ้ามือ (Host)</b>
+    <b><span class="chip player"></span> ผู้เล่น (Player)</b>
+    <b><span class="chip server"></span> เซิร์ฟเวอร์ (Server)</b>
+  </div>
+
+  <div class="lanes">
+    <!-- HOST -->
+    <div class="lane host">
+      <h2>🎤 เจ้ามือ <span class="tag">1 เครื่อง</span></h2>
+
+      <div class="step"><div class="num">1</div>
+        <div class="t">เปิดเว็บ → “สร้างห้อง + เป็นเจ้ามือ”</div>
+        <div class="d">เข้า <code>bingo.pssgroup.app</code> จากมือถือ/จอใหญ่</div></div>
+
+      <div class="step"><div class="num">2</div>
+        <div class="t">ได้รหัสห้อง 4 ตัว</div>
+        <div class="d">เช่น <code>Q7NG</code> โชว์ตัวใหญ่ให้ผู้เล่นกรอก</div></div>
+
+      <div class="step"><div class="num">3</div>
+        <div class="t">ตั้งค่าเกม</div>
+        <div class="d">เลือกรูปแบบชนะ (แถว/สี่มุม/ตัว X/เต็มใบ) และจำนวนการ์ดสูงสุดต่อเครื่อง</div></div>
+
+      <div class="step"><div class="num">4</div>
+        <div class="t">กด “เริ่มเกม” ▶️</div>
+        <div class="d">ระบบแจกการ์ดใหม่ให้ผู้เล่นทุกคนพร้อมกัน</div></div>
+
+      <div class="step"><div class="num">5</div>
+        <div class="t">เรียกเลขทีละลูก 🎱</div>
+        <div class="d">กดเอง หรือเปิด “เรียกอัตโนมัติ” ทุก 4 วินาที</div></div>
+
+      <div class="step"><div class="num">6</div>
+        <div class="t">เห็นกระดานเลข + ผู้เล่นสด</div>
+        <div class="d">เลขที่เรียกไฮไลต์บนกระดาน B-I-N-G-O และเห็นใครออนไลน์</div></div>
+
+      <div class="step"><div class="num">7</div>
+        <div class="t">ประกาศผู้ชนะ 🏆</div>
+        <div class="d">เมื่อมีคนบิงโกถูกต้อง หน้าจอขึ้นชื่อผู้ชนะ + คอนเฟตติ</div></div>
+
+      <div class="step"><div class="num">8</div>
+        <div class="t">กด “รอบใหม่” ↺</div>
+        <div class="d">แจกการ์ดใหม่ เริ่มเกมถัดไปได้ทันที</div></div>
+    </div>
+
+    <!-- PLAYER -->
+    <div class="lane player">
+      <h2>🙋 ผู้เล่น <span class="tag">กี่คนก็ได้</span></h2>
+
+      <div class="step"><div class="num">1</div>
+        <div class="t">เปิดเว็บบนมือถือ</div>
+        <div class="d">ไม่ต้องลงแอป เปิดในเบราว์เซอร์ได้เลย</div></div>
+
+      <div class="step"><div class="num">2</div>
+        <div class="t">ใส่ชื่อ + รหัสห้อง + จำนวนการ์ด</div>
+        <div class="d">ถือได้หลายใบต่อเครื่องตามที่เจ้ามือกำหนด</div></div>
+
+      <div class="step"><div class="num">3</div>
+        <div class="t">กด “เข้าเล่น” → ได้การ์ด 5×5</div>
+        <div class="d">มีช่อง <code>FREE</code> ตรงกลาง รอเจ้ามือเริ่ม</div></div>
+
+      <div class="step"><div class="num">4</div>
+        <div class="t">เลขถูกเรียก → daub อัตโนมัติ</div>
+        <div class="d">ช่องที่ตรงเลขจะถูกแต้มให้เอง ไม่ต้องกดเอง</div></div>
+
+      <div class="step"><div class="num">5</div>
+        <div class="t">การ์ดที่ตรงเยอะเลื่อนขึ้นบน 🔥</div>
+        <div class="d">แต่ละเครื่องจัดเรียงการ์ดตามจำนวนที่ตรง (มากสุดอยู่บน)</div></div>
+
+      <div class="step"><div class="num">6</div>
+        <div class="t">ครบตามรูปแบบ → ปุ่ม BINGO สว่าง</div>
+        <div class="d">ปุ่มเด้งเตือนเมื่อการ์ดใบใดใบหนึ่งครบ</div></div>
+
+      <div class="step"><div class="num">7</div>
+        <div class="t">กด BINGO! 🎉</div>
+        <div class="d">ส่งคำร้องให้เซิร์ฟเวอร์ตรวจ</div></div>
+
+      <div class="step"><div class="num">8</div>
+        <div class="t">ชนะ 🎉 / ยังไม่ครบ ↩︎</div>
+        <div class="d">ถ้าถูกจริงและเร็วสุด = ชนะ ถ้ายังไม่ครบ เล่นต่อได้</div></div>
+    </div>
+  </div>
+
+  <!-- SERVER -->
+  <div class="server">
+    <h2><span class="ic">🖥️</span> เซิร์ฟเวอร์กลาง — เชื่อมทุกเครื่องแบบ real-time</h2>
+    <p style="color:var(--muted);margin:0;font-size:.9rem">ทุก action ของเจ้ามือและผู้เล่นวิ่งผ่าน WebSocket เซิร์ฟเวอร์เดียว แล้ว broadcast สถานะกลับไปทุกจอทันที</p>
+    <div class="grid">
+      <div class="box"><div class="h">🎲 แจก &amp; สุ่ม</div><div class="p">สร้างการ์ด 5×5 ให้แต่ละคน และสุ่มลำดับเลข 1–75 ไม่ซ้ำ</div></div>
+      <div class="box"><div class="h">🔄 Sync สด</div><div class="p">เลขที่เรียก รายชื่อผู้เล่น สถานะเกม อัปเดตพร้อมกันทุกเครื่อง</div></div>
+      <div class="box"><div class="h">🛡️ ตรวจบิงโก (กันโกง)</div><div class="p">เซิร์ฟเวอร์เป็นคนตัดสินเสมอ ใครกดก่อนและถูกจริงเป็นผู้ชนะ</div></div>
+    </div>
+  </div>
+
+  <!-- WIN FLOW -->
+  <div class="win">
+    <h2>🏁 ตอนมีคนกด BINGO</h2>
+    <div class="flow">
+      <span class="n">ผู้เล่นกด BINGO</span><span class="arw">→</span>
+      <span class="n">เซิร์ฟเวอร์ตรวจการ์ดกับเลขที่เรียก</span><span class="arw">→</span>
+      <span class="n">ถูก ✔︎</span><span class="arw">→</span>
+      <span class="n">broadcast ชื่อผู้ชนะทุกจอ</span>
+    </div>
+    <p style="margin-top:12px;font-size:.86rem;color:var(--muted)">ถ้าตรวจแล้วยังไม่ครบ ระบบเด้งข้อความ “ยังไม่บิงโก” ให้เฉพาะคนนั้น เกมดำเนินต่อ</p>
+  </div>
+
+  <!-- NOTES -->
+  <div class="note">
+    <div class="n"><div class="h">🔌 หลุด/จอดับ แล้วกลับมา</div>
+      <div class="p">เครื่องจำ playerId ไว้ รีเฟรชหรือเน็ตหลุดแล้วต่อใหม่ ได้การ์ดใบเดิมคืน</div></div>
+    <div class="n"><div class="h">💾 สถานะเก็บใน memory</div>
+      <div class="p">ถ้ารีสตาร์ตเซิร์ฟเวอร์ตอนกำลังเล่น ห้องจะหาย — ควรรีสตาร์ตตอนไม่มีคนเล่น</div></div>
+  </div>
+
+  <div class="foot">Cruise Bingo · บิงโก 75 ลูก เล่นสดบนมือถือ</div>
+</div>
+</body>
+</html>
