@@ -9,7 +9,7 @@
 
 ## 0. เช็กก่อนเริ่ม
 
-**DNS** — `bingo.pssgroup.app` ต้องชี้มาที่ IP เครื่องนี้ (27.254.143.237)
+**DNS** — `bingo.pssgroup.app` ต้องชี้มาที่ IP (public) ของเครื่องนี้
 ```powershell
 Resolve-DnsName bingo.pssgroup.app
 ```
